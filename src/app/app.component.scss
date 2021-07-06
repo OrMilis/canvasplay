@@ -1,0 +1,21 @@
+.img {
+  height: calc(100% - 3vh);
+  width: 100%;
+  margin-bottom: 1vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+img {
+  height: 100%;
+  width: auto;
+}
+
+.container {
+  height: 100vh;
+  padding: 1vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
