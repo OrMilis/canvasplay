@@ -31,19 +31,17 @@ export class AppComponent implements OnInit {
 
   private previousFrameTime = Date.now();
 
+  private stream;
+  private recorder;
+
+  private streamChunks = [];
+
   src = new BehaviorSubject<string>('');
   click$ = new ReplaySubject<void>();
   fps = new BehaviorSubject<string>('');
   // private circle = this.getCircle();
 
   ngOnInit(): void {
-    // scheduled(of(null), animationFrameScheduler)
-    //   .pipe(
-    //     repeat(),
-    //     // map(() => createCircle([this.circle])),
-    //     map((canvas: Canvas) => canvas.toDataURL())
-    //   )
-    //   .subscribe(this.src);
     this.onClick();
     let uuidStr: string;
     let circles: Circle[];
@@ -55,6 +53,20 @@ export class AppComponent implements OnInit {
           circles = hashToCircle(uuidStr);
         }),
         map(() => schedulerCreateCanvas()),
+        // tap((canvas: Canvas) => {
+        //   this.stream = (canvas as any).captureStream(144);
+        //   //@ts-ignore
+        //   this.recorder = new MediaRecorder(this.stream);
+
+        //   this.recorder.ondataavailable = (e) => this.streamChunks.push(e.data);
+        //   this.recorder.onstop = (e) =>
+        //     this.exportVid(new Blob(this.streamChunks, { type: 'video/webm' }));
+
+        //   this.recorder.start();
+        //   setTimeout(() => {
+        //     this.recorder.stop();
+        //   }, 5000);
+        // }),
         switchMap((canvas: Canvas) =>
           scheduled(of(canvas), animationFrameScheduler).pipe(repeat())
         ),
@@ -82,17 +94,15 @@ export class AppComponent implements OnInit {
     this.click$.next();
   }
 
-  //   private getCircle(): Circle {
-  //     return {
-  //       center: {
-  //         x: 500,
-  //         y: 500,
-  //       },
-  //       radius: 100,
-  //       style: {
-  //         color: 'black',
-  //         fill: true,
-  //       },
-  //     };
-  //   }
+  // private exportVid(blob) {
+  //   const vid = document.createElement('video');
+  //   vid.src = URL.createObjectURL(blob);
+  //   vid.controls = true;
+  //   document.body.appendChild(vid);
+  //   const a = document.createElement('a');
+  //   a.download = 'myvid.webm';
+  //   a.href = vid.src;
+  //   a.textContent = 'download the video';
+  //   document.body.appendChild(a);
+  // }
 }
