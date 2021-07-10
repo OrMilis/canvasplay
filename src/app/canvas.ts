@@ -3,8 +3,10 @@ import { TinyColor } from '@ctrl/tinycolor';
 import { Observable, of, animationFrameScheduler } from 'rxjs';
 import { repeat, delay } from 'rxjs/operators';
 
-const HEIGHT = 3508;
-const WIDTH = 2480;
+const HEIGHT = 1280 / 1;
+const WIDTH = 720 / 1;
+
+let previousChangeTime: Record<number, number> = {};
 
 export function createShit(
   xy: XY,
@@ -69,14 +71,22 @@ export function createCircle(
   const canvas = existingCanvas ?? createCanvas(WIDTH, HEIGHT);
   const context = canvas.getContext('2d');
 
-  circles.forEach((circle) => {
+  circles.forEach((circle, index) => {
     context.save();
+
+    const currentTime = Date.now();
+    const change = currentTime - (previousChangeTime[index] ?? Date.now());
+    const dr = circle.animation.direction === 'left' ? -1 : 1;
+    context.translate(circle.animation.center.x, circle.animation.center.y);
+    circle.animation.rotationAngle += (change / 1000) * dr;
+    context.rotate(circle.animation.rotationAngle);
+    previousChangeTime[index] = currentTime;
 
     context.beginPath();
 
     context.arc(
-      circle.center.x,
-      circle.center.y,
+      circle.center.x - circle.animation.center.x,
+      circle.center.y - circle.animation.center.y,
       circle.radius,
       0,
       2 * Math.PI,
@@ -96,6 +106,11 @@ export function createCircle(
       context.strokeStyle = circle.style.color;
       context.stroke();
     }
+
+    // //Rotation Animation
+    // context.save();
+
+    // context.restore();
 
     context.restore();
   });
@@ -255,7 +270,7 @@ export function hashToCircle(hash: string): Circle[] {
     .map((color) => color.toHexString());
 
   for (let i = 0; i < numberOfCircles; i++) {
-    const circle = {
+    const circle: Circle = {
       center: {
         x: numberToDimension(
           hexToNumber(
@@ -294,6 +309,14 @@ export function hashToCircle(hash: string): Circle[] {
             ? mapRange(hexToNumber(hash.charAt(i)), 0, 15, 10, 25)
             : undefined,
       },
+      animation: {
+        center: {
+          x: 0,
+          y: 0,
+        },
+        direction: 'left',
+        rotationAngle: 0,
+      },
     };
 
     if (circle.style.fill) {
@@ -310,6 +333,49 @@ export function hashToCircle(hash: string): Circle[] {
         .setAlpha(alpha)
         .toHex8String();
     }
+
+    circle.animation.center = {
+      x:
+        circle.center.x +
+        mapRange(
+          hexToNumber(
+            hash.slice(
+              Math.min(6 + i, hash.length - 6),
+              Math.min(8 + i, hash.length - 8)
+            )
+          ),
+          0,
+          255,
+          -circle.radius / 2,
+          circle.radius / 2
+        ),
+      y:
+        circle.center.y +
+        mapRange(
+          hexToNumber(
+            hash.slice(
+              Math.min(8 + i, hash.length - 8),
+              Math.min(10 + i, hash.length - 10)
+            )
+          ),
+          0,
+          255,
+          -circle.radius / 2,
+          circle.radius / 2
+        ),
+    };
+    circle.animation.direction =
+      (hexToNumber(hash.slice(6, 12)) ^
+        hexToNumber(
+          hash.slice(
+            Math.min(6 + i, hash.length - 6),
+            Math.min(10 + i, hash.length - 10)
+          )
+        )) %
+        i ===
+      0
+        ? 'left'
+        : 'right';
 
     circles.push(circle);
   }
@@ -353,6 +419,21 @@ export function hashToTriangle(hash: string): Triangle {
   };
 }
 
+export function schedulerCreateCanvas(): Canvas {
+  const canvas = createCanvas(WIDTH, HEIGHT);
+  const context = canvas.getContext('2d');
+
+  context.quality = 'best';
+  context.imageSmoothingQuality = 'high';
+
+  return canvas;
+}
+
+export function clearCanvasFrame(canvas: Canvas): void {
+  const context = canvas.getContext('2d');
+  context.clearRect(0, 0, WIDTH, HEIGHT);
+}
+
 function hexToColor(hex: string): string {
   return `#${hex}`;
 }
@@ -391,11 +472,18 @@ export interface PrimitiveWithStyle {
   style: Style;
 }
 
+export interface RotateAnimation {
+  center: XY;
+  direction: 'left' | 'right';
+  rotationAngle: number;
+}
+
 export interface Background extends PrimitiveWithStyle {}
 
 export interface Circle extends PrimitiveWithStyle {
   center: XY;
   radius: number;
+  animation: RotateAnimation;
 }
 
 export interface Triangle extends PrimitiveWithStyle {
