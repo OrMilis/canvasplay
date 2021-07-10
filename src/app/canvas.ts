@@ -239,7 +239,7 @@ export function createHashLabel(hash: string, existingCanvas?: Canvas): Canvas {
   context.restore();
 
   context.strokeStyle = 'white';
-  context.lineWidth = 10;
+  context.lineWidth = 5;
   context.font = 'bold 135px Poiret One';
 
   const rectPad = actualHeight / 4;
