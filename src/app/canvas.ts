@@ -150,15 +150,15 @@ export function createHashLabel(hash: string, existingCanvas?: Canvas): Canvas {
 
   context.save();
 
-  context.font = 'bold 85px Poiret One';
+  context.font = 'bold 32px Poiret One';
   context.fillStyle = 'white';
   //   context.textAlign = 'center';
   context.textBaseline = 'middle';
 
   context.shadowColor = 'black';
-  context.shadowBlur = 4;
-  context.shadowOffsetX = -12;
-  context.shadowOffsetY = 12;
+  context.shadowBlur = 1;
+  context.shadowOffsetX = -4;
+  context.shadowOffsetY = 4;
 
   const upperHash = hash.toUpperCase();
   const metrics = context.measureText(upperHash);
