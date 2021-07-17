@@ -3,8 +3,13 @@ import { TinyColor } from '@ctrl/tinycolor';
 import { Observable, of, animationFrameScheduler } from 'rxjs';
 import { repeat, delay } from 'rxjs/operators';
 
-const HEIGHT = 1280 / 1;
-const WIDTH = 720 / 1;
+const HEIGHT = 1400 / 1;
+const WIDTH = 1200 / 1;
+
+const CIRCLES_WIDTH = 1160;
+const CIRCLES_HEIGHT = CIRCLES_WIDTH;
+
+const PADDING = WIDTH - CIRCLES_WIDTH;
 
 let previousChangeTime: Record<number, number> = {};
 
@@ -53,38 +58,39 @@ export function createShit(
 
 export function createBackground(
   background: Background,
-  existingCanvas?: Canvas
+  canvas: Canvas
 ): Canvas {
-  const canvas = existingCanvas ?? createCanvas(WIDTH, HEIGHT);
   const context = canvas.getContext('2d');
 
   context.fillStyle = background.style.color ?? 'red';
-  context.fillRect(0, 0, WIDTH, HEIGHT);
+  context.fillRect(PADDING, PADDING, CIRCLES_WIDTH, CIRCLES_HEIGHT);
 
   return canvas;
 }
 
-export function createCircle(
-  circles: Circle[],
-  existingCanvas?: Canvas
-): Canvas {
-  const canvas = existingCanvas ?? createCanvas(WIDTH, HEIGHT);
+export function createCircle(circles: Circle[], canvas: Canvas): Canvas {
   const context = canvas.getContext('2d');
 
+  const bufferCanvas = createCanvas(CIRCLES_WIDTH, CIRCLES_HEIGHT);
+  const bufferContext = bufferCanvas.getContext('2d');
+
   circles.forEach((circle, index) => {
-    context.save();
+    bufferContext.save();
 
     const currentTime = Date.now();
     const change = currentTime - (previousChangeTime[index] ?? Date.now());
     const dr = circle.animation.direction === 'left' ? -1 : 1;
-    context.translate(circle.animation.center.x, circle.animation.center.y);
+    bufferContext.translate(
+      circle.animation.center.x,
+      circle.animation.center.y
+    );
     circle.animation.rotationAngle += (change / 1000) * dr;
-    context.rotate(circle.animation.rotationAngle);
+    bufferContext.rotate(circle.animation.rotationAngle);
     previousChangeTime[index] = currentTime;
 
-    context.beginPath();
+    bufferContext.beginPath();
 
-    context.arc(
+    bufferContext.arc(
       circle.center.x - circle.animation.center.x,
       circle.center.y - circle.animation.center.y,
       circle.radius,
@@ -94,26 +100,23 @@ export function createCircle(
     );
 
     if (circle.style.shadowBlur !== undefined) {
-      context.shadowColor = circle.style.color;
-      context.shadowBlur = circle.style.shadowBlur;
+      bufferContext.shadowColor = circle.style.color;
+      bufferContext.shadowBlur = circle.style.shadowBlur;
     }
 
     if (circle.style.fill) {
-      context.fillStyle = circle.style.color;
-      context.fill();
+      bufferContext.fillStyle = circle.style.color;
+      bufferContext.fill();
     } else {
-      context.lineWidth = circle.style.width ?? 1;
-      context.strokeStyle = circle.style.color;
-      context.stroke();
+      bufferContext.lineWidth = circle.style.width ?? 1;
+      bufferContext.strokeStyle = circle.style.color;
+      bufferContext.stroke();
     }
 
-    // //Rotation Animation
-    // context.save();
-
-    // context.restore();
-
-    context.restore();
+    bufferContext.restore();
   });
+
+  context.drawImage(bufferCanvas, PADDING, PADDING);
 
   return canvas;
 }
@@ -144,113 +147,148 @@ export function createTriangle(
   return canvas;
 }
 
-export function createHashLabel(hash: string, existingCanvas?: Canvas): Canvas {
-  const canvas = existingCanvas ?? createCanvas(WIDTH, HEIGHT);
+export function createFrame(canvas: Canvas): Canvas {
   const context = canvas.getContext('2d');
+
+  const bufferCanvas = createCanvas(WIDTH, HEIGHT);
+  const bufferContext = bufferCanvas.getContext('2d');
+
+  bufferContext.save();
+
+  bufferContext.globalCompositeOperation = 'xor';
+  bufferContext.fillStyle = 'white';
+
+  bufferContext.fillRect(0, 0, WIDTH, HEIGHT);
+  bufferContext.fillRect(
+    PADDING,
+    PADDING,
+    CIRCLES_WIDTH - PADDING,
+    CIRCLES_HEIGHT - PADDING
+  );
+
+  bufferContext.restore();
+
+  context.save();
+  context.shadowColor = '#00000077';
+  context.shadowBlur = PADDING;
+
+  context.drawImage(bufferCanvas, 0, 0);
+  context.restore();
+
+  return canvas;
+}
+
+export function createHashLabel(hash: string, canvas: Canvas): Canvas {
+  //65px per hash char. 2 rows
+  const context = canvas.getContext('2d');
+  const primaryColor = hashToBackground(hash).style.color;
 
   context.save();
 
-  context.font = 'bold 32px Poiret One';
-  context.fillStyle = 'white';
-  //   context.textAlign = 'center';
+  context.font = '149px Poiret One';
+  context.fillStyle = primaryColor;
+  // context.textAlign = 'center';
   context.textBaseline = 'middle';
 
-  context.shadowColor = 'black';
-  context.shadowBlur = 1;
-  context.shadowOffsetX = -4;
-  context.shadowOffsetY = 4;
+  const hexPrefix = '0X';
+  const hexPrefixMeasure = context.measureText(hexPrefix);
+  const hexPrefixHeight =
+    hexPrefixMeasure.actualBoundingBoxAscent +
+    hexPrefixMeasure.actualBoundingBoxDescent / 2;
+  const charCanvasWidth =
+    (CIRCLES_WIDTH - PADDING * 2 - hexPrefixMeasure.width) / (hash.length / 2);
+  const charCanvasHeight = charCanvasWidth;
 
-  const upperHash = hash.toUpperCase();
-  const metrics = context.measureText(upperHash);
-  const actualHeight =
-    (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) * 1.5;
-  const textWidth = context.measureText('0').width;
+  context.fillText(
+    hexPrefix,
+    PADDING,
+    CIRCLES_HEIGHT + PADDING + hexPrefixHeight
+  );
 
-  context.fillText(upperHash, textWidth, actualHeight);
+  // context.fillStyle = 'red';
+  // context.fillRect(PADDING, CIRCLES_HEIGHT, CIRCLES_WIDTH - PADDING, PADDING);
+  // context.fillRect(PADDING, HEIGHT - PADDING, CIRCLES_WIDTH - PADDING, PADDING);
+  context.restore();
 
-  //   const chunks = [
-  //     upperHash.substr(0, 8).split('').join(String.fromCharCode(8202)),
-  //     upperHash.substr(8, 4).split('').join(String.fromCharCode(8202)),
-  //     upperHash.substr(12, 8).split('').join(String.fromCharCode(8202)),
-  //   ];
+  context.save();
 
-  //   const chunksXY: XY[] = [
-  //     { x: textWidth * 1.5, y: actualHeight },
-  //     {
-  //       x:
-  //         WIDTH -
-  //         textWidth *
-  //           1.5 *
-  //           (chunks[1].split(String.fromCharCode(8202)).length - 1),
-  //       y: HEIGHT - actualHeight * 2.5,
-  //     },
-  //     {
-  //       x:
-  //         WIDTH -
-  //         textWidth *
-  //           1.5 *
-  //           (chunks[2].split(String.fromCharCode(8202)).length - 1),
-  //       y: HEIGHT - actualHeight,
-  //     },
-  //   ];
+  const splittedHash: string[] = [
+    hash.toUpperCase().slice(0, hash.length / 2),
+    hash.toUpperCase().slice(hash.length / 2, hash.length),
+  ];
 
-  //   for (let i = 0; i < chunks.length; i++) {
-  //     const chunkText = chunks[i];
-  //     for (let j = 0; j < chunkText.length; j++) {
-  //       const textWidth = context.measureText('0').width;
-  //       context.fillText(
-  //         chunkText[j],
-  //         chunksXY[i].x + (j * textWidth) / 1.5,
-  //         chunksXY[i].y
-  //       );
-  //     }
-  //   }
+  splittedHash.forEach((hashLine, lineIndex) => {
+    const characters = hashLine.split('');
+    const lineCanvas = createCanvas(
+      charCanvasHeight * (hash.length / 2),
+      charCanvasHeight
+    );
+    const lineContext = lineCanvas.getContext('2d');
 
-  //   const chunksVertical = [
-  //     upperHash.substr(24, 8).split('').join(String.fromCharCode(8202)).split(''),
-  //     upperHash.substr(20, 4).split('').join(String.fromCharCode(8202)).split(''),
-  //   ];
+    characters.forEach((char, charIndex) => {
+      const charCanvas = createCanvas(charCanvasWidth, charCanvasHeight);
 
-  //   const chunksVerticalXY: XY[] = [
-  //     { x: WIDTH - textWidth * 1.5, y: actualHeight },
-  //     {
-  //       x: textWidth * 1.5,
-  //       y:
-  //         HEIGHT -
-  //         actualHeight *
-  //           (chunksVertical[1].join('').split(String.fromCharCode(8202)).length +
-  //             1),
-  //     },
-  //   ];
+      const charCombinationNumber =
+        hexToNumber(char) ^
+        hexToNumber(hash.charAt(hash.length - 1 - charIndex));
+      if (charCombinationNumber % 2 === 0) {
+        drawLabelChar(charCanvas, char, primaryColor, 'white');
+      } else {
+        drawLabelChar(charCanvas, char, 'white', primaryColor);
+      }
 
-  //   for (let i = 0; i < chunksVertical.length; i++) {
-  //     const chunkText = chunksVertical[i];
-  //     for (let j = 0; j < chunkText.length; j++) {
-  //       const verticalSpacing =
-  //         metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-  //       context.fillText(
-  //         chunkText[j],
-  //         chunksVerticalXY[i].x,
-  //         chunksVerticalXY[i].y + j * verticalSpacing
-  //       );
-  //     }
-  //   }
+      lineContext.drawImage(charCanvas, charCanvasWidth * charIndex, 0);
+    });
+
+    context.drawImage(
+      lineCanvas,
+      hexPrefixMeasure.width + PADDING * 2,
+      CIRCLES_HEIGHT +
+        PADDING +
+        charCanvasHeight / 2 +
+        charCanvasHeight * lineIndex
+    );
+  });
 
   context.restore();
 
-  context.strokeStyle = 'white';
-  context.lineWidth = 5;
-  context.font = 'bold 135px Poiret One';
-
-  const rectPad = actualHeight / 4;
-  context.strokeRect(
-    rectPad,
-    rectPad,
-    WIDTH - 2 * rectPad,
-    HEIGHT - 2 * rectPad
-  );
-
   return canvas;
+}
+
+function drawLabelChar(
+  charCanvas: Canvas,
+  char: string,
+  charColor: string,
+  backgroundColor: string
+): void {
+  const charContext = charCanvas.getContext('2d');
+  const charMeasure = charContext.measureText(char);
+  const charHeight =
+    charMeasure.actualBoundingBoxAscent +
+    charMeasure.actualBoundingBoxDescent / 2;
+
+  charContext.font = '40px Poiret One';
+  charContext.textAlign = 'center';
+  charContext.textBaseline = 'middle';
+
+  charContext.fillStyle = backgroundColor;
+  charContext.fillRect(0, 0, charCanvas.width, charCanvas.height);
+
+  charContext.save();
+  charContext.beginPath();
+  charContext.strokeStyle = 'white';
+  charContext.lineWidth = 5;
+  charContext.moveTo(0, charCanvas.height);
+  charContext.lineTo(charCanvas.width, charCanvas.height);
+  charContext.stroke();
+  charContext.restore();
+
+  charContext.fillStyle = charColor;
+  charContext.fillText(
+    char,
+    charCanvas.width / 2,
+    (charCanvas.height + charHeight / 2) / 2
+  );
 }
 
 export function hashToBackground(hash: string): Background {

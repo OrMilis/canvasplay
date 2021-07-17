@@ -15,6 +15,7 @@ import {
   clearCanvasFrame,
   createBackground,
   createCircle,
+  createFrame,
   createHashLabel,
   hashToBackground,
   hashToCircle,
@@ -53,20 +54,6 @@ export class AppComponent implements OnInit {
           circles = hashToCircle(uuidStr);
         }),
         map(() => schedulerCreateCanvas()),
-        // tap((canvas: Canvas) => {
-        //   this.stream = (canvas as any).captureStream(144);
-        //   //@ts-ignore
-        //   this.recorder = new MediaRecorder(this.stream);
-
-        //   this.recorder.ondataavailable = (e) => this.streamChunks.push(e.data);
-        //   this.recorder.onstop = (e) =>
-        //     this.exportVid(new Blob(this.streamChunks, { type: 'video/webm' }));
-
-        //   this.recorder.start();
-        //   setTimeout(() => {
-        //     this.recorder.stop();
-        //   }, 5000);
-        // }),
         switchMap((canvas: Canvas) =>
           scheduled(of(canvas), animationFrameScheduler).pipe(repeat())
         ),
@@ -75,6 +62,7 @@ export class AppComponent implements OnInit {
           createBackground(hashToBackground(uuidStr), canvas)
         ),
         map((canvas: Canvas) => createCircle(circles, canvas)),
+        map((canvas: Canvas) => createFrame(canvas)),
         map((canvas: Canvas) => createHashLabel(uuidStr, canvas))
       )
       .pipe(
